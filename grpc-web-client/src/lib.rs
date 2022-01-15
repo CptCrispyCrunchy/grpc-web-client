@@ -11,6 +11,7 @@ use http::{header::HeaderName, request::Request, response::Response, HeaderMap, 
 use http_body::Body;
 use js_sys::{Array, Uint8Array};
 use std::{error::Error, pin::Pin};
+use std::collections::HashMap;
 use tonic::{body::BoxBody, client::GrpcService, Status};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -40,6 +41,7 @@ pub struct Client {
     credentials: CredentialsMode,
     mode: RequestMode,
     encoding: Encoding,
+    user_headers: HashMap<String, String>
 }
 
 impl Client {
@@ -49,6 +51,17 @@ impl Client {
             credentials: CredentialsMode::SameOrigin,
             mode: RequestMode::Cors,
             encoding: Encoding::None,
+            user_headers: Default::default()
+        }
+    }
+
+    pub fn new_with_headermap(base_uri: String, user_headers: HashMap<String, String>) -> Self {
+        Client {
+            base_uri,
+            credentials: CredentialsMode::SameOrigin,
+            mode: RequestMode::Cors,
+            encoding: Encoding::None,
+            user_headers
         }
     }
 
@@ -59,6 +72,9 @@ impl Client {
         let headers = Headers::new().unwrap();
         for (k, v) in rpc.headers().iter() {
             headers.set(k.as_str(), v.to_str().unwrap()).unwrap();
+        }
+        for (k, v) in self.user_headers.iter() {
+            headers.set(&*k, &*v).unwrap();
         }
         headers.set("x-user-agent", "grpc-web-rust/0.1").unwrap();
         headers.set("x-grpc-web", "1").unwrap();
